@@ -1,6 +1,8 @@
 module com.mediflow.ui {
     requires javafx.controls;
     requires javafx.fxml;
+    requires com.google.gson;
+    requires java.net.http;
 
     opens com.mediflow.ui to javafx.fxml;
     exports com.mediflow.ui;
