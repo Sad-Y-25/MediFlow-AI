@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="20" alignment="TOP_CENTER" style="-fx-padding: 30; -fx-background-color: #f4f7f6;"
+      xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.mediflow.ui.controller.DashboardController">
+
+    <Label text="File d'attente MediFlow AI" style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+
+    <TableView fx:id="ticketTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="idCol" text="N° Ticket" prefWidth="100"/>
+            <TableColumn fx:id="nameCol" text="Nom du Patient" prefWidth="250"/>
+            <TableColumn fx:id="urgencyCol" text="Urgence (1-5)" prefWidth="150"/>
+        </columns>
+    </TableView>
+
+    <Button text="Actualiser la liste" onAction="#loadDataFromServer"
+            style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
+</VBox>

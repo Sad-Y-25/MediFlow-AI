@@ -14,3 +14,21 @@ CREATE TABLE users (
 -- Insertion d'un utilisateur test (le mot de passe devra être haché plus tard)
 INSERT INTO users (full_name, email, password, role) 
 VALUES ('Youssef Admin', 'admin@mediflow.com', 'admin123', 'ADMIN');
+
+
+USE mediflow;
+
+CREATE TABLE IF NOT EXISTS tickets (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    patient_name VARCHAR(255) NOT NULL,
+    reason VARCHAR(255),
+    urgency_level INT NOT NULL,
+    status VARCHAR(50) DEFAULT 'WAITING',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO tickets (patient_name, reason, urgency_level, status) VALUES
+('Zaid Test', 'Contrôle de routine', 1, 'WAITING'),
+('Amine Rahali', 'Douleur intense genou', 3, 'WAITING'),
+('Sara Mansouri', 'Difficultés respiratoires', 5, 'WAITING'),
+('Karim Bennani', 'Fièvre et toux', 2, 'WAITING');

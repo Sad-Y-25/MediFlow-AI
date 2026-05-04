@@ -2,10 +2,17 @@ package com.mediflow.ui.controller;
 
 import com.mediflow.ui.api.AuthApiService;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.stage.Stage;
+
+import java.io.IOException;
 // import com.mediflow.ui.App; // Garde-le commenté pour l'instant
 
 public class LoginController {
@@ -46,5 +53,20 @@ private void handleLogin() {
         errorLabel.setStyle("-fx-text-fill: #e74c3c;");
         errorLabel.setText("Identifiants incorrects ou serveur éteint.");
     }
+
+    // Dans ta méthode handleLogin(), après le succès de l'API :
+    Platform.runLater(() -> {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/mediflow/ui/Dashboard.fxml"));
+            Parent root = loader.load();
+            Stage stage = (Stage) emailField.getScene().getWindow();
+            stage.setScene(new Scene(root, 800, 600));
+            stage.setTitle("MediFlow AI - Tableau de Bord");
+            stage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    });
+
 }
 }
