@@ -7,4 +7,5 @@ import java.util.List;
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
     // Récupérer uniquement les patients qui attendent encore
     List<Ticket> findByStatusOrderByCreatedAtAsc(String status);
+    List<Ticket> findByStatus(String status);
 }

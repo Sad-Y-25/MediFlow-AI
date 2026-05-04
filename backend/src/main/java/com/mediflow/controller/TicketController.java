@@ -7,8 +7,9 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/tickets")
-@CrossOrigin("*")
+@CrossOrigin("*") // Autorise ton frontend JavaFX à communiquer avec le backend
 public class TicketController {
+
     private final TicketService ticketService;
 
     public TicketController(TicketService ticketService) {
@@ -17,7 +18,8 @@ public class TicketController {
 
     @GetMapping("/queue")
     public List<Ticket> getQueue() {
-        return ticketService.getWaitingQueue();
+        // On utilise l'algorithme de priorité ici !
+        return ticketService.getPriorityQueue();
     }
 
     @PostMapping("/add")

@@ -1,21 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.collections.*?>
+<?import java.lang.*?>
 
-<VBox spacing="20" alignment="TOP_CENTER" style="-fx-padding: 30; -fx-background-color: #f4f7f6;"
+<HBox spacing="20" style="-fx-padding: 20; -fx-background-color: #f8f9fa;"
       xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.mediflow.ui.controller.DashboardController">
 
-    <Label text="File d'attente MediFlow AI" style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+    <!-- Section Gauche : Formulaire de Saisie -->
+    <VBox spacing="15" prefWidth="280" style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #dee2e6; -fx-border-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0);">
+        <Label text="Nouveau Patient" style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
 
-    <TableView fx:id="ticketTable" VBox.vgrow="ALWAYS">
-        <columns>
-            <TableColumn fx:id="idCol" text="N° Ticket" prefWidth="100"/>
-            <TableColumn fx:id="nameCol" text="Nom du Patient" prefWidth="250"/>
-            <TableColumn fx:id="urgencyCol" text="Urgence (1-5)" prefWidth="150"/>
-        </columns>
-    </TableView>
+        <VBox spacing="5">
+            <Label text="Nom complet :"/>
+            <TextField fx:id="nameInput" promptText="ex: Jean Dupont"/>
+        </VBox>
 
-    <Button text="Actualiser la liste" onAction="#loadDataFromServer"
-            style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
-</VBox>
+        <VBox spacing="5">
+            <Label text="Motif :"/>
+            <TextField fx:id="reasonInput" promptText="ex: Douleur abdominale"/>
+        </VBox>
+
+        <VBox spacing="5">
+            <Label text="Niveau d'Urgence (1-5) :"/>
+            <ComboBox fx:id="urgencyInput" prefWidth="240">
+                <items>
+                    <FXCollections fx:factory="observableArrayList">
+                        <Integer fx:value="1"/>
+                        <Integer fx:value="2"/>
+                        <Integer fx:value="3"/>
+                        <Integer fx:value="4"/>
+                        <Integer fx:value="5"/>
+                    </FXCollections>
+                </items>
+                <value><Integer fx:value="1"/></value>
+            </ComboBox>
+        </VBox>
+
+        <Button text="Ajouter à la file" onAction="#handleAddPatient"
+                maxWidth="Infinity" prefHeight="40"
+                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"/>
+
+        <Separator style="-fx-padding: 10 0;"/>
+
+        <Button text="Actualiser la liste" onAction="#loadDataFromServer"
+                maxWidth="Infinity" style="-fx-background-color: #3498db; -fx-text-fill: white;"/>
+    </VBox>
+
+    <!-- Section Droite : La File d'Attente -->
+    <VBox spacing="10" HBox.hgrow="ALWAYS">
+        <Label text="File d'attente MediFlow AI" style="-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
+        <TableView fx:id="ticketTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="idCol" text="ID" prefWidth="60"/>
+                <TableColumn fx:id="nameCol" text="Nom du Patient" prefWidth="250"/>
+                <TableColumn fx:id="urgencyCol" text="Urgence" prefWidth="120"/>
+            </columns>
+        </TableView>
+    </VBox>
+
+</HBox>

@@ -32,3 +32,6 @@ INSERT INTO tickets (patient_name, reason, urgency_level, status) VALUES
 ('Amine Rahali', 'Douleur intense genou', 3, 'WAITING'),
 ('Sara Mansouri', 'Difficultés respiratoires', 5, 'WAITING'),
 ('Karim Bennani', 'Fièvre et toux', 2, 'WAITING');
+
+
+UPDATE tickets SET created_at = NOW() WHERE created_at IS NULL;

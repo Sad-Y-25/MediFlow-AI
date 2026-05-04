@@ -4,8 +4,10 @@ import com.mediflow.entity.Ticket;
 import com.google.gson.Gson;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 
 import java.net.URI;
@@ -66,6 +68,52 @@ public class DashboardController {
                     Platform.runLater(() -> {
                         System.err.println("Erreur de connexion au serveur : " + ex.getMessage());
                     });
+                    return null;
+                });
+    }
+
+    @FXML private TextField nameInput;
+    @FXML private TextField reasonInput;
+    @FXML private ComboBox<Integer> urgencyInput;
+
+    /**
+     * Envoie un nouveau patient au serveur et rafraîchit le tableau.
+     */
+    @FXML
+    private void handleAddPatient() {
+        if (nameInput.getText().isEmpty()) return;
+
+        // 1. Création de l'objet Ticket
+        Ticket newTicket = new Ticket();
+        newTicket.setPatientName(nameInput.getText());
+        newTicket.setReason(reasonInput.getText());
+        newTicket.setUrgencyLevel(urgencyInput.getValue());
+        newTicket.setStatus("WAITING");
+
+        // 2. Conversion en JSON via Gson
+        String jsonBody = gson.toJson(newTicket);
+
+        // 3. Envoi de la requête POST
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8080/api/tickets/add"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> {
+                    Platform.runLater(() -> {
+                        if (response.statusCode() == 200 || response.statusCode() == 201) {
+                            // Nettoyage et rafraîchissement
+                            nameInput.clear();
+                            reasonInput.clear();
+                            urgencyInput.setValue(1);
+                            loadDataFromServer();
+                        }
+                    });
+                })
+                .exceptionally(ex -> {
+                    ex.printStackTrace();
                     return null;
                 });
     }
