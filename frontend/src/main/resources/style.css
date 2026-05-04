@@ -1,0 +1,22 @@
+/* Style pour le bouton Ajouter */
+.button-add {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+}
+.button-add:hover {
+    -fx-background-color: #2ecc71;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 5, 0, 0, 0);
+}
+
+/* Style pour le bouton Terminer (dans le tableau) */
+.button-terminate {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 3;
+}
+.button-terminate:hover {
+    -fx-background-color: #c0392b;
+}

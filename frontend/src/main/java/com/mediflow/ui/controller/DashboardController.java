@@ -3,12 +3,16 @@ package com.mediflow.ui.controller;
 import com.mediflow.entity.Ticket;
 import com.google.gson.Gson;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -92,15 +96,66 @@ public class DashboardController {
             }
         });
 
+        // À ajouter dans initialize()
+        reasonInput.textProperty().addListener((observable, oldValue, newValue) -> {
+            int suggestedLevel = analyzeUrgency(newValue);
+
+            // On met à jour le ComboBox automatiquement
+            urgencyInput.setValue(suggestedLevel);
+
+            // Petit bonus visuel : on colore le champ Motif si c'est critique
+            if (suggestedLevel == 5) {
+                reasonInput.setStyle("-fx-border-color: #e74c3c; -fx-border-width: 2;");
+            } else {
+                reasonInput.setStyle("");
+            }
+        });
+
+        // Dans ton initialize(), là où tu crées le bouton :
+        actionCol.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("Terminer");
+
+            {
+                // On applique la classe CSS définie dans //style.css
+                btn.getStyleClass().add("button-terminate");
+
+                btn.setOnAction(event -> {
+                    Ticket ticket = getTableView().getItems().get(getIndex());
+                    processCompletion(ticket.getId());
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : btn);
+            }
+        });
+
     }
     private void processCompletion(Long id) {
+        // 1. Préparation de la requête PUT vers le backend
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:8080/api/tickets/" + id + "/complete"))
+                .header("Content-Type", "application/json")
                 .PUT(HttpRequest.BodyPublishers.noBody())
                 .build();
 
+        // 2. Envoi asynchrone
         client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenRun(() -> Platform.runLater(this::loadDataFromServer));
+                .thenAccept(response -> {
+                    if (response.statusCode() == 200) {
+                        Platform.runLater(() -> {
+                            // 3. Rafraîchir la liste actuelle (le patient disparaît, car son statut n'est plus WAITING)
+                            loadDataFromServer();
+                            System.out.println("Ticket " + id + " marqué comme COMPLETED dans la DB.");
+                        });
+                    }
+                })
+                .exceptionally(ex -> {
+                    ex.printStackTrace();
+                    return null;
+                });
     }
 
     /**
@@ -122,7 +177,7 @@ public class DashboardController {
                         // 1. On met à jour la liste principale
                         masterData.setAll(tickets);
 
-                        // 2. On initialise le FilteredList (seulement la première fois)
+                        // 2. On initialise le FilteredList (seulement la première fois).
                         if (filteredData == null) {
                             filteredData = new FilteredList<>(masterData, p -> true);
 
@@ -214,5 +269,91 @@ public class DashboardController {
                     ex.printStackTrace();
                     return null;
                 });
+    }
+    private int analyzeUrgency(String reason) {
+        if (reason == null || reason.isEmpty()) return 1;
+        String text = reason.toLowerCase();
+
+        // Niveau 5 : Urgence Vitale
+        if (text.contains("poitrine") || text.contains("respirer") || text.contains("inconscient") || text.contains("sang")) {
+            return 5;
+        }
+        // Niveau 3-4 : Urgent
+        if (text.contains("douleur") || text.contains("fièvre") || text.contains("brulure") || text.contains("fracture")) {
+            return 4;
+        }
+        // Niveau 2 : Standard
+        if (text.contains("rhume") || text.contains("toux") || text.contains("fatigue")) {
+            return 2;
+        }
+
+        return 1; // Par défaut
+    }
+    @FXML
+
+    private void showHistory() {
+        Stage historyStage = new Stage();
+        historyStage.setTitle("MediFlow AI - Historique des Consultations");
+
+        // Configuration de la table d'historique
+        TableView<Ticket> historyTable = new TableView<>();
+
+        TableColumn<Ticket, Long> idColH = new TableColumn<>("ID");
+        idColH.setCellValueFactory(new PropertyValueFactory<>("id"));
+
+        TableColumn<Ticket, String> nameColH = new TableColumn<>("Patient");
+        nameColH.setCellValueFactory(new PropertyValueFactory<>("patientName"));
+
+        TableColumn<Ticket, Integer> urgencyColH = new TableColumn<>("Urgence");
+        urgencyColH.setCellValueFactory(new PropertyValueFactory<>("urgencyLevel"));
+
+        TableColumn<Ticket, String> durationCol = new TableColumn<>("Attente");
+        durationCol.setCellValueFactory(cellData -> {
+            Ticket t = cellData.getValue();
+
+            // On vérifie que les deux dates ne sont pas nulles et ne sont pas vides
+            if (t.getCreatedAt() != null && t.getCompletedAt() != null &&
+                    !t.getCreatedAt().isEmpty() && !t.getCompletedAt().isEmpty()) {
+                try {
+                    // 1. Conversion des Strings en objets LocalDateTime
+                    // Note : Spring envoie généralement le format ISO (ex: 2026-05-04T23:15:00)
+                    java.time.LocalDateTime start = java.time.LocalDateTime.parse(t.getCreatedAt());
+                    java.time.LocalDateTime end = java.time.LocalDateTime.parse(t.getCompletedAt());
+
+                    // 2. Calcul de la durée
+                    long minutes = java.time.Duration.between(start, end).toMinutes();
+                    return new javafx.beans.property.SimpleStringProperty(minutes + " min");
+
+                } catch (Exception e) {
+                    System.err.println("Erreur de parsing des dates : " + e.getMessage());
+                    return new javafx.beans.property.SimpleStringProperty("Err format");
+                }
+            }
+            return new javafx.beans.property.SimpleStringProperty("-");
+        });
+
+        historyTable.getColumns().add(durationCol);
+
+        historyTable.getColumns().addAll(idColH, nameColH, urgencyColH);
+
+        // Chargement des données COMPLETED
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8080/api/tickets/history"))
+                .GET()
+                .build();
+
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(HttpResponse::body)
+                .thenAccept(json -> {
+                    Ticket[] history = gson.fromJson(json, Ticket[].class);
+                    Platform.runLater(() -> historyTable.getItems().setAll(history));
+                });
+
+        VBox layout = new VBox(10, new Label("Patients déjà consultés"), historyTable);
+        layout.setStyle("-fx-padding: 20;");
+        historyStage.setScene(new Scene(layout, 500, 400));
+        historyStage.show();
+
+
     }
 }

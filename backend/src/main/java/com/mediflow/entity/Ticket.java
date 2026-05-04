@@ -17,6 +17,9 @@ public class Ticket {
     private int urgencyLevel; // De 1 (stable) à 5 (critique)
     private String status;    // WAITING, IN_PROGRESS, COMPLETED
     private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime completedAt;
+
+    // Getters et Setters...
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {

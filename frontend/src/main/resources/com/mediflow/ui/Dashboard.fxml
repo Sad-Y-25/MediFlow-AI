@@ -6,7 +6,8 @@
 
 <HBox spacing="20" style="-fx-padding: 20; -fx-background-color: #f8f9fa;"
       xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.mediflow.ui.controller.DashboardController">
+      fx:controller="com.mediflow.ui.controller.DashboardController"
+        stylesheets="@/style.css">
 
     <!-- Section Gauche : Formulaire de Saisie -->
     <VBox spacing="15" prefWidth="280" style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #dee2e6; -fx-border-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0);">
@@ -39,8 +40,7 @@
         </VBox>
 
         <Button text="Ajouter à la file" onAction="#handleAddPatient"
-                maxWidth="Infinity" prefHeight="40"
-                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"/>
+                maxWidth="Infinity" styleClass="button-add"/>
 
         <Separator style="-fx-padding: 10 0;"/>
 
@@ -72,7 +72,10 @@
                 <TableColumn fx:id="actionCol" text="Actions" prefWidth="120"/>
             </columns>
 
+
         </TableView>
+        <Button text="Voir l'Historique" onAction="#showHistory"
+                style="-fx-background-color: #34495e; -fx-text-fill: white;"/>
     </VBox>
 
 </HBox>

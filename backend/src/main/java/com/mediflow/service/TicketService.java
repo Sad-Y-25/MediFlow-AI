@@ -4,6 +4,7 @@ import com.mediflow.entity.Ticket;
 import com.mediflow.repository.TicketRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -45,13 +46,13 @@ public class TicketService {
     /**
      * Met à jour le statut d'un ticket (ex: passage en consultation ou terminé).
      */
-    public Ticket updateTicketStatus(Long id, String newStatus) {
-        return ticketRepository.findById(id)
-                .map(ticket -> {
-                    ticket.setStatus(newStatus);
-                    return ticketRepository.save(ticket);
-                })
-                .orElseThrow(() -> new RuntimeException("Ticket avec l'ID " + id + " non trouvé"));
+    public void updateTicketStatus(Long id, String status) {
+        Ticket ticket = ticketRepository.findById(id).orElseThrow();
+        ticket.setStatus(status);
+        if ("COMPLETED".equals(status)) {
+            ticket.setCompletedAt(LocalDateTime.now()); // On fixe l'heure de fin
+        }
+        ticketRepository.save(ticket);
     }
 
     /**
