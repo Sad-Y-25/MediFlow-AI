@@ -51,12 +51,27 @@
     <!-- Section Droite : La File d'Attente -->
     <VBox spacing="10" HBox.hgrow="ALWAYS">
         <Label text="File d'attente MediFlow AI" style="-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
+        <HBox spacing="20" style="-fx-padding: 10; -fx-background-color: white; -fx-border-color: #dee2e6; -fx-border-radius: 5;">
+            <VBox alignment="CENTER">
+                <Label text="Total Patients" style="-fx-font-size: 12; -fx-text-fill: #7f8c8d;"/>
+                <Label fx:id="totalStats" text="0" style="-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: #2980b9;"/>
+            </VBox>
+            <Separator orientation="VERTICAL"/>
+            <VBox alignment="CENTER">
+                <Label text="Urgences (Niv. 5)" style="-fx-font-size: 12; -fx-text-fill: #7f8c8d;"/>
+                <Label fx:id="urgentStats" text="0" style="-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: #c0392b;"/>
+            </VBox>
+        </HBox>
+        <TextField fx:id="searchField" promptText="Rechercher un patient ou un motif..."
+                   style="-fx-background-radius: 15; -fx-padding: 8;"/>
         <TableView fx:id="ticketTable" VBox.vgrow="ALWAYS">
             <columns>
                 <TableColumn fx:id="idCol" text="ID" prefWidth="60"/>
                 <TableColumn fx:id="nameCol" text="Nom du Patient" prefWidth="250"/>
                 <TableColumn fx:id="urgencyCol" text="Urgence" prefWidth="120"/>
+                <TableColumn fx:id="actionCol" text="Actions" prefWidth="120"/>
             </columns>
+
         </TableView>
     </VBox>
 

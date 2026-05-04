@@ -26,4 +26,9 @@ public class TicketController {
     public Ticket addTicket(@RequestBody Ticket ticket) {
         return ticketService.createTicket(ticket);
     }
+
+    @PutMapping("/{id}/complete")
+    public void completeTicket(@PathVariable Long id) {
+        ticketService.updateTicketStatus(id, "COMPLETED");
+    }
 }

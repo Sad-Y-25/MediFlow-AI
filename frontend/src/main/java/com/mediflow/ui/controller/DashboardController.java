@@ -3,11 +3,11 @@ package com.mediflow.ui.controller;
 import com.mediflow.entity.Ticket;
 import com.google.gson.Gson;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 
 import java.net.URI;
@@ -17,11 +17,18 @@ import java.net.http.HttpResponse;
 
 public class DashboardController {
 
+    // Assure-toi que les déclarations ressemblent EXACTEMENT à ceci :
     @FXML private TableView<Ticket> ticketTable;
     @FXML private TableColumn<Ticket, Long> idCol;
     @FXML private TableColumn<Ticket, String> nameCol;
     @FXML private TableColumn<Ticket, Integer> urgencyCol;
+    @FXML private TableColumn<Ticket, Void> actionCol; // La nouvelle colonne action
+    @FXML private Label totalStats;
+    @FXML private Label urgentStats;
+    @FXML private TextField searchField;
 
+    private FilteredList<Ticket> filteredData;
+    private ObservableList<Ticket> masterData = FXCollections.observableArrayList();
     private final HttpClient client = HttpClient.newHttpClient();
     private final Gson gson = new Gson();
     private final String API_URL = "http://localhost:8080/api/tickets/queue";
@@ -39,6 +46,61 @@ public class DashboardController {
 
         // Charger les données dès l'ouverture du tableau de bord
         loadDataFromServer();
+
+
+        ticketTable.setRowFactory(tv -> new TableRow<Ticket>() {
+            @Override
+            protected void updateItem(Ticket item, boolean empty) {
+                super.updateItem(item, empty);
+
+                // On vérifie que la ligne n'est pas vide ET que l'item est bien un Ticket
+                if (empty || item == null) {
+                    setStyle("");
+                } else {
+                    // Version compatible Java 11/17
+                    switch (item.getUrgencyLevel()) {
+                        case 5:
+                            setStyle("-fx-background-color: #ffcccc;"); // Rouge clair
+                            break;
+                        case 4:
+                        case 3:
+                            setStyle("-fx-background-color: #fff4e6;"); // Orange clair
+                            break;
+                        default:
+                            setStyle(""); // Blanc standard
+                            break;
+                    }
+                }
+            }
+        });
+
+        actionCol.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("Terminer");
+
+            {
+                btn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                btn.setOnAction(event -> {
+                    Ticket ticket = getTableView().getItems().get(getIndex());
+                    processCompletion(ticket.getId());
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : btn);
+            }
+        });
+
+    }
+    private void processCompletion(Long id) {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8080/api/tickets/" + id + "/complete"))
+                .PUT(HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenRun(() -> Platform.runLater(this::loadDataFromServer));
     }
 
     /**
@@ -51,25 +113,61 @@ public class DashboardController {
                 .GET()
                 .build();
 
-        // Envoi de la requête en mode asynchrone pour ne pas bloquer l'UI
         client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(HttpResponse::body)
                 .thenAccept(json -> {
-                    // Conversion du JSON reçu en tableau d'objets Ticket
                     Ticket[] tickets = gson.fromJson(json, Ticket[].class);
 
-                    // Mise à jour de l'interface graphique sur le thread principal
                     Platform.runLater(() -> {
-                        ticketTable.getItems().setAll(tickets);
-                        System.out.println("Données reçues et affichées : " + tickets.length + " patients.");
+                        // 1. On met à jour la liste principale
+                        masterData.setAll(tickets);
+
+                        // 2. On initialise le FilteredList (seulement la première fois)
+                        if (filteredData == null) {
+                            filteredData = new FilteredList<>(masterData, p -> true);
+
+                            // 3. Liaison du champ de recherche (une seule fois suffit)
+                            searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+                                filteredData.setPredicate(ticket -> {
+                                    if (newValue == null || newValue.isEmpty()) return true;
+                                    String lowerCaseFilter = newValue.toLowerCase();
+
+                                    return ticket.getPatientName().toLowerCase().contains(lowerCaseFilter) ||
+                                            ticket.getReason().toLowerCase().contains(lowerCaseFilter);
+                                });
+                            });
+
+                            // 4. On lie le tableau au filtre au lieu de la liste brute
+                            ticketTable.setItems(filteredData);
+                        }
+
+                        // 5. Mise à jour des statistiques (Total / Urgences)
+                        updateStatistics(tickets);
                     });
-                })
-                .exceptionally(ex -> {
-                    Platform.runLater(() -> {
-                        System.err.println("Erreur de connexion au serveur : " + ex.getMessage());
-                    });
-                    return null;
                 });
+    }
+    /**
+     * Calcule et affiche les statistiques globales de la file d'attente.
+     * @param tickets Le tableau des patients actuellement chargés.
+     */
+    private void updateStatistics(Ticket[] tickets) {
+        if (tickets == null) return;
+
+        // 1. Nombre total de patients dans la file "WAITING"
+        int total = tickets.length;
+
+        // 2. Nombre de cas critiques (Urgence = 5)
+        // Utilisation des Streams pour un filtrage efficace
+        long urgents = java.util.Arrays.stream(tickets)
+                .filter(t -> t.getUrgencyLevel() == 5)
+                .count();
+
+        // 3. Mise à jour des labels FXML
+        totalStats.setText(String.valueOf(total));
+        urgentStats.setText(String.valueOf(urgents));
+
+        // Petit log de contrôle pour votre console IntelliJ
+        System.out.println("Mise à jour Stats : Total=" + total + " | Urgents=" + urgents);
     }
 
     @FXML private TextField nameInput;
