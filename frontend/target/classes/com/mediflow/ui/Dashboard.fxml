@@ -19,25 +19,35 @@
         </VBox>
 
         <VBox spacing="5">
+            <Label text="Email du patient :"/>
+            <TextField fx:id="emailInput" promptText="ex: patient@gmail.com"/>
+        </VBox>
+
+        <VBox spacing="5">
             <Label text="Motif :"/>
             <TextField fx:id="reasonInput" promptText="ex: Douleur abdominale"/>
         </VBox>
 
         <VBox spacing="5">
-            <Label text="Niveau d'Urgence (1-5) :"/>
+            <Label text="Âge du patient :" />
+            <TextField fx:id="ageInput" promptText="ex: 65" />
+        </VBox>
+
+        <VBox spacing="5">
+            <Label text="Niveau d'Urgence :" />
             <ComboBox fx:id="urgencyInput" prefWidth="240">
                 <items>
                     <FXCollections fx:factory="observableArrayList">
-                        <Integer fx:value="1"/>
-                        <Integer fx:value="2"/>
-                        <Integer fx:value="3"/>
-                        <Integer fx:value="4"/>
-                        <Integer fx:value="5"/>
+                        <String fx:value="LOW" />
+                        <String fx:value="MEDIUM" />
+                        <String fx:value="HIGH" />
                     </FXCollections>
                 </items>
-                <value><Integer fx:value="1"/></value>
+                <value><String fx:value="LOW" /></value>
             </ComboBox>
         </VBox>
+
+        <CheckBox fx:id="appointmentInput" text="Patient avec Rendez-vous (+15 pts)" style="-fx-text-fill: #2980b9; -fx-font-weight: bold;"/>
 
         <Button text="Ajouter à la file" onAction="#handleAddPatient"
                 maxWidth="Infinity" styleClass="button-add"/>
@@ -66,10 +76,12 @@
                    style="-fx-background-radius: 15; -fx-padding: 8;"/>
         <TableView fx:id="ticketTable" VBox.vgrow="ALWAYS">
             <columns>
-                <TableColumn fx:id="idCol" text="ID" prefWidth="60"/>
-                <TableColumn fx:id="nameCol" text="Nom du Patient" prefWidth="250"/>
-                <TableColumn fx:id="urgencyCol" text="Urgence" prefWidth="120"/>
-                <TableColumn fx:id="actionCol" text="Actions" prefWidth="120"/>
+                <TableColumn fx:id="idCol" text="Ticket" prefWidth="90"/>
+                <TableColumn fx:id="nameCol" text="Nom du Patient" prefWidth="180"/>
+                <TableColumn fx:id="urgencyCol" text="Urgence" prefWidth="80"/>
+                <TableColumn fx:id="scoreCol" text="Score IA" prefWidth="80"/>
+                <TableColumn fx:id="waitCol" text="Attente (min)" prefWidth="100"/>
+                <TableColumn fx:id="actionCol" text="Actions" prefWidth="100"/>
             </columns>
 
 

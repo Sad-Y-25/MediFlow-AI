@@ -1,5 +1,6 @@
 package com.mediflow.ui.controller;
 
+import com.mediflow.entity.Patient;
 import com.mediflow.entity.Ticket;
 import com.google.gson.Gson;
 import javafx.application.Platform;
@@ -11,6 +12,7 @@ import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -21,53 +23,60 @@ import java.net.http.HttpResponse;
 
 public class DashboardController {
 
-    // Assure-toi que les déclarations ressemblent EXACTEMENT à ceci :
+    // --- COMPOSANTS DE LA FILE D'ATTENTE ---
     @FXML private TableView<Ticket> ticketTable;
-    @FXML private TableColumn<Ticket, Long> idCol;
+    @FXML private TableColumn<Ticket, String> idCol;       // Modifié en String pour ticketNumber (ex: TCK-123)
     @FXML private TableColumn<Ticket, String> nameCol;
-    @FXML private TableColumn<Ticket, Integer> urgencyCol;
-    @FXML private TableColumn<Ticket, Void> actionCol; // La nouvelle colonne action
+    @FXML private TableColumn<Ticket, String> urgencyCol;  // Modifié en String (LOW, MEDIUM, HIGH)
+    @FXML private TableColumn<Ticket, Integer> scoreCol;   // Nouvelle colonne IA
+    @FXML private TableColumn<Ticket, Integer> waitCol;    // Nouvelle colonne Temps Estimé
+    @FXML private TableColumn<Ticket, Void> actionCol;
+
+    // --- COMPOSANTS DES STATISTIQUES ---
     @FXML private Label totalStats;
     @FXML private Label urgentStats;
     @FXML private TextField searchField;
 
+    // --- COMPOSANTS DU FORMULAIRE ---
+    @FXML private TextField nameInput;
+    @FXML private TextField reasonInput;
+    @FXML private TextField ageInput;                // Nouveau champ Âge
+    @FXML private CheckBox appointmentInput;         // Nouvelle case Rendez-vous
+    @FXML private ComboBox<String> urgencyInput;
+    @FXML private TextField emailInput;
+
+    // --- VARIABLES GLOBALES ---
     private FilteredList<Ticket> filteredData;
     private ObservableList<Ticket> masterData = FXCollections.observableArrayList();
     private final HttpClient client = HttpClient.newHttpClient();
     private final Gson gson = new Gson();
     private final String API_URL = "http://localhost:8080/api/tickets/queue";
 
-    /**
-     * Cette méthode est appelée automatiquement par JavaFX après le chargement du FXML.
-     */
     @FXML
     public void initialize() {
-        // Configuration des colonnes : les noms entre guillemets doivent
-        // correspondre EXACTEMENT aux noms des variables dans ta classe Ticket.java.
-        idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
-        nameCol.setCellValueFactory(new PropertyValueFactory<>("patientName"));
+        // 1. Configuration des colonnes
+        idCol.setCellValueFactory(new PropertyValueFactory<>("ticketNumber"));
+        nameCol.setCellValueFactory(new PropertyValueFactory<>("patientName")); // Utilise le getter intelligent
         urgencyCol.setCellValueFactory(new PropertyValueFactory<>("urgencyLevel"));
+        scoreCol.setCellValueFactory(new PropertyValueFactory<>("priorityScore"));
+        waitCol.setCellValueFactory(new PropertyValueFactory<>("estimatedWaitingTime"));
 
-        // Charger les données dès l'ouverture du tableau de bord
+        // 2. Chargement initial des données
         loadDataFromServer();
 
-
+        // 3. Coloration intelligente des lignes (selon LOW, MEDIUM, HIGH)
         ticketTable.setRowFactory(tv -> new TableRow<Ticket>() {
             @Override
             protected void updateItem(Ticket item, boolean empty) {
                 super.updateItem(item, empty);
-
-                // On vérifie que la ligne n'est pas vide ET que l'item est bien un Ticket
-                if (empty || item == null) {
+                if (empty || item == null || item.getUrgencyLevel() == null) {
                     setStyle("");
                 } else {
-                    // Version compatible Java 11/17
-                    switch (item.getUrgencyLevel()) {
-                        case 5:
+                    switch (item.getUrgencyLevel().toUpperCase()) {
+                        case "HIGH":
                             setStyle("-fx-background-color: #ffcccc;"); // Rouge clair
                             break;
-                        case 4:
-                        case 3:
+                        case "MEDIUM":
                             setStyle("-fx-background-color: #fff4e6;"); // Orange clair
                             break;
                         default:
@@ -78,17 +87,16 @@ public class DashboardController {
             }
         });
 
+        // 4. Configuration du Bouton d'Action "Terminer"
         actionCol.setCellFactory(param -> new TableCell<>() {
             private final Button btn = new Button("Terminer");
-
             {
-                btn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                btn.getStyleClass().add("button-terminate"); // Utilise le CSS
                 btn.setOnAction(event -> {
                     Ticket ticket = getTableView().getItems().get(getIndex());
                     processCompletion(ticket.getId());
                 });
             }
-
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
@@ -96,60 +104,98 @@ public class DashboardController {
             }
         });
 
-        // À ajouter dans initialize()
+        // 5. Analyse NLP en temps réel pour suggérer l'urgence
         reasonInput.textProperty().addListener((observable, oldValue, newValue) -> {
-            int suggestedLevel = analyzeUrgency(newValue);
-
-            // On met à jour le ComboBox automatiquement
+            String suggestedLevel = analyzeUrgency(newValue);
             urgencyInput.setValue(suggestedLevel);
 
-            // Petit bonus visuel : on colore le champ Motif si c'est critique
-            if (suggestedLevel == 5) {
+            if ("HIGH".equals(suggestedLevel)) {
                 reasonInput.setStyle("-fx-border-color: #e74c3c; -fx-border-width: 2;");
             } else {
                 reasonInput.setStyle("");
             }
         });
 
-        // Dans ton initialize(), là où tu crées le bouton :
         actionCol.setCellFactory(param -> new TableCell<>() {
-            private final Button btn = new Button("Terminer");
+            private final Button btnAbsent = new Button("Absent");
+            private final HBox container = new HBox(10, btnAbsent); // Conteneur pour les boutons
 
             {
-                // On applique la classe CSS définie dans //style.css
-                btn.getStyleClass().add("button-terminate");
-
-                btn.setOnAction(event -> {
+                btnAbsent.setStyle("-fx-background-color: #f39c12; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                btnAbsent.setOnAction(event -> {
                     Ticket ticket = getTableView().getItems().get(getIndex());
-                    processCompletion(ticket.getId());
+                    handleMarkAbsent(ticket.getId());
                 });
             }
 
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : btn);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(container);
+                }
             }
         });
 
+
     }
+
+    private void handleMarkAbsent(Long id) {
+        System.out.println("Tentative de marquage ABSENT pour l'ID : " + id);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8080/api/tickets/" + id + "/absent"))
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> {
+                    if (response.statusCode() == 200) {
+                        System.out.println("Succès : Le patient a été marqué absent.");
+                        // On rafraîchit le tableau pour que le patient disparaisse (statut != WAITING)
+                        Platform.runLater(this::loadDataFromServer);
+                    } else {
+                        System.err.println("Erreur Serveur : Code " + response.statusCode());
+                    }
+                })
+                .exceptionally(ex -> {
+                    ex.printStackTrace();
+                    return null;
+                });
+    }
+    /**
+     * Analyse sémantique basique pour définir l'urgence (NLP).
+     */
+    private String analyzeUrgency(String reason) {
+        if (reason == null || reason.isEmpty()) return "LOW";
+        String text = reason.toLowerCase();
+
+        if (text.contains("poitrine") || text.contains("respirer") || text.contains("inconscient") || text.contains("sang")) {
+            return "HIGH";
+        }
+        if (text.contains("douleur") || text.contains("fièvre") || text.contains("brulure") || text.contains("fracture")) {
+            return "MEDIUM";
+        }
+        return "LOW";
+    }
+
+    /**
+     * Termine la consultation d'un patient.
+     */
     private void processCompletion(Long id) {
-        // 1. Préparation de la requête PUT vers le backend
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:8080/api/tickets/" + id + "/complete"))
                 .header("Content-Type", "application/json")
                 .PUT(HttpRequest.BodyPublishers.noBody())
                 .build();
 
-        // 2. Envoi asynchrone
         client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(response -> {
                     if (response.statusCode() == 200) {
-                        Platform.runLater(() -> {
-                            // 3. Rafraîchir la liste actuelle (le patient disparaît, car son statut n'est plus WAITING)
-                            loadDataFromServer();
-                            System.out.println("Ticket " + id + " marqué comme COMPLETED dans la DB.");
-                        });
+                        Platform.runLater(this::loadDataFromServer);
                     }
                 })
                 .exceptionally(ex -> {
@@ -159,7 +205,7 @@ public class DashboardController {
     }
 
     /**
-     * Appelle l'API Spring Boot et met à jour le tableau.
+     * Rafraîchit les données depuis le serveur.
      */
     @FXML
     private void loadDataFromServer() {
@@ -174,79 +220,68 @@ public class DashboardController {
                     Ticket[] tickets = gson.fromJson(json, Ticket[].class);
 
                     Platform.runLater(() -> {
-                        // 1. On met à jour la liste principale
                         masterData.setAll(tickets);
 
-                        // 2. On initialise le FilteredList (seulement la première fois).
                         if (filteredData == null) {
                             filteredData = new FilteredList<>(masterData, p -> true);
-
-                            // 3. Liaison du champ de recherche (une seule fois suffit)
                             searchField.textProperty().addListener((observable, oldValue, newValue) -> {
                                 filteredData.setPredicate(ticket -> {
                                     if (newValue == null || newValue.isEmpty()) return true;
-                                    String lowerCaseFilter = newValue.toLowerCase();
+                                    String filter = newValue.toLowerCase();
 
-                                    return ticket.getPatientName().toLowerCase().contains(lowerCaseFilter) ||
-                                            ticket.getReason().toLowerCase().contains(lowerCaseFilter);
+                                    // On cherche dans le nom OU dans le numéro de ticket
+                                    return ticket.getPatientName().toLowerCase().contains(filter) ||
+                                            ticket.getTicketNumber().toLowerCase().contains(filter);
                                 });
                             });
-
-                            // 4. On lie le tableau au filtre au lieu de la liste brute
                             ticketTable.setItems(filteredData);
                         }
-
-                        // 5. Mise à jour des statistiques (Total / Urgences)
                         updateStatistics(tickets);
                     });
                 });
     }
+
     /**
-     * Calcule et affiche les statistiques globales de la file d'attente.
-     * @param tickets Le tableau des patients actuellement chargés.
+     * Met à jour les statistiques en haut de l'écran.
      */
     private void updateStatistics(Ticket[] tickets) {
         if (tickets == null) return;
-
-        // 1. Nombre total de patients dans la file "WAITING"
         int total = tickets.length;
-
-        // 2. Nombre de cas critiques (Urgence = 5)
-        // Utilisation des Streams pour un filtrage efficace
         long urgents = java.util.Arrays.stream(tickets)
-                .filter(t -> t.getUrgencyLevel() == 5)
+                .filter(t -> "HIGH".equalsIgnoreCase(t.getUrgencyLevel()))
                 .count();
 
-        // 3. Mise à jour des labels FXML
         totalStats.setText(String.valueOf(total));
         urgentStats.setText(String.valueOf(urgents));
-
-        // Petit log de contrôle pour votre console IntelliJ
-        System.out.println("Mise à jour Stats : Total=" + total + " | Urgents=" + urgents);
     }
 
-    @FXML private TextField nameInput;
-    @FXML private TextField reasonInput;
-    @FXML private ComboBox<Integer> urgencyInput;
-
     /**
-     * Envoie un nouveau patient au serveur et rafraîchit le tableau.
+     * Création d'un ticket avec l'objet Patient imbriqué pour le moteur IA.
      */
     @FXML
     private void handleAddPatient() {
         if (nameInput.getText().isEmpty()) return;
 
-        // 1. Création de l'objet Ticket
+        // 1. Création du Patient
+        Patient patient = new Patient();
+        patient.setFullName(nameInput.getText());
+        patient.setEmail(emailInput.getText());
+        try {
+            patient.setAge(Integer.parseInt(ageInput.getText()));
+        } catch (NumberFormatException e) {
+            patient.setAge(30); // Âge par défaut si la case est vide ou mal formatée
+        }
+
+        // 2. Création du Ticket
         Ticket newTicket = new Ticket();
-        newTicket.setPatientName(nameInput.getText());
-        newTicket.setReason(reasonInput.getText());
-        newTicket.setUrgencyLevel(urgencyInput.getValue());
-        newTicket.setStatus("WAITING");
+        newTicket.setPatient(patient);
+        newTicket.setUrgencyLevel(urgencyInput.getValue() != null ? urgencyInput.getValue() : "LOW");
+        newTicket.setHasAppointment(appointmentInput.isSelected());
+        // Note : Le "motif" (reason) n'est plus envoyé en base selon le SRS,
+        // il sert uniquement au NLP pour choisir l'urgence localement.
 
-        // 2. Conversion en JSON via Gson
+        // 3. Envoi au Backend
         String jsonBody = gson.toJson(newTicket);
-
-        // 3. Envoi de la requête POST
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:8080/api/tickets/add"))
                 .header("Content-Type", "application/json")
@@ -257,10 +292,11 @@ public class DashboardController {
                 .thenAccept(response -> {
                     Platform.runLater(() -> {
                         if (response.statusCode() == 200 || response.statusCode() == 201) {
-                            // Nettoyage et rafraîchissement
                             nameInput.clear();
                             reasonInput.clear();
-                            urgencyInput.setValue(1);
+                            if (ageInput != null) ageInput.clear();
+                            if (appointmentInput != null) appointmentInput.setSelected(false);
+                            if (urgencyInput != null) urgencyInput.setValue("LOW");
                             loadDataFromServer();
                         }
                     });
@@ -269,74 +305,79 @@ public class DashboardController {
                     ex.printStackTrace();
                     return null;
                 });
-    }
-    private int analyzeUrgency(String reason) {
-        if (reason == null || reason.isEmpty()) return 1;
-        String text = reason.toLowerCase();
 
-        // Niveau 5 : Urgence Vitale
-        if (text.contains("poitrine") || text.contains("respirer") || text.contains("inconscient") || text.contains("sang")) {
-            return 5;
-        }
-        // Niveau 3-4 : Urgent
-        if (text.contains("douleur") || text.contains("fièvre") || text.contains("brulure") || text.contains("fracture")) {
-            return 4;
-        }
-        // Niveau 2 : Standard
-        if (text.contains("rhume") || text.contains("toux") || text.contains("fatigue")) {
-            return 2;
-        }
-
-        return 1; // Par défaut
+        emailInput.clear();
     }
+
+    /**
+     * Ouvre la fenêtre d'historique des consultations.
+     */
     @FXML
-
     private void showHistory() {
         Stage historyStage = new Stage();
         historyStage.setTitle("MediFlow AI - Historique des Consultations");
 
-        // Configuration de la table d'historique
         TableView<Ticket> historyTable = new TableView<>();
 
-        TableColumn<Ticket, Long> idColH = new TableColumn<>("ID");
-        idColH.setCellValueFactory(new PropertyValueFactory<>("id"));
+        // 1. Colonne Ticket (Numéro unique)
+        TableColumn<Ticket, String> idColH = new TableColumn<>("Ticket");
+        idColH.setCellValueFactory(new PropertyValueFactory<>("ticketNumber"));
 
+        // 2. Colonne Nom du Patient
         TableColumn<Ticket, String> nameColH = new TableColumn<>("Patient");
         nameColH.setCellValueFactory(new PropertyValueFactory<>("patientName"));
 
-        TableColumn<Ticket, Integer> urgencyColH = new TableColumn<>("Urgence");
+        // 3. Colonne Niveau d'Urgence
+        TableColumn<Ticket, String> urgencyColH = new TableColumn<>("Urgence");
         urgencyColH.setCellValueFactory(new PropertyValueFactory<>("urgencyLevel"));
 
-        TableColumn<Ticket, String> durationCol = new TableColumn<>("Attente");
+        // 4. Colonne Statut (Nouveau : Distingue les Absents des Consultés)
+        TableColumn<Ticket, String> statusColH = new TableColumn<>("Statut");
+        statusColH.setCellValueFactory(new PropertyValueFactory<>("status"));
+        statusColH.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    // Style dynamique : Rouge pour Absent, Vert pour Complété
+                    if ("ABSENT".equals(item)) {
+                        setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                    } else {
+                        setStyle("-fx-text-fill: #2ecc71; -fx-font-weight: bold;");
+                    }
+                }
+            }
+        });
+
+        // 5. Colonne Temps de passage (Calcul de la durée en minutes)
+        TableColumn<Ticket, String> durationCol = new TableColumn<>("Temps de passage");
         durationCol.setCellValueFactory(cellData -> {
             Ticket t = cellData.getValue();
-
-            // On vérifie que les deux dates ne sont pas nulles et ne sont pas vides
             if (t.getCreatedAt() != null && t.getCompletedAt() != null &&
                     !t.getCreatedAt().isEmpty() && !t.getCompletedAt().isEmpty()) {
                 try {
-                    // 1. Conversion des Strings en objets LocalDateTime
-                    // Note : Spring envoie généralement le format ISO (ex: 2026-05-04T23:15:00)
                     java.time.LocalDateTime start = java.time.LocalDateTime.parse(t.getCreatedAt());
                     java.time.LocalDateTime end = java.time.LocalDateTime.parse(t.getCompletedAt());
-
-                    // 2. Calcul de la durée
                     long minutes = java.time.Duration.between(start, end).toMinutes();
-                    return new javafx.beans.property.SimpleStringProperty(minutes + " min");
-
+                    return new SimpleStringProperty(minutes + " min");
                 } catch (Exception e) {
-                    System.err.println("Erreur de parsing des dates : " + e.getMessage());
-                    return new javafx.beans.property.SimpleStringProperty("Err format");
+                    return new SimpleStringProperty("-");
                 }
             }
-            return new javafx.beans.property.SimpleStringProperty("-");
+            return new SimpleStringProperty("-");
         });
 
-        historyTable.getColumns().add(durationCol);
+        // Ajout de toutes les colonnes à la table
+        historyTable.getColumns().addAll(idColH, nameColH, urgencyColH, statusColH, durationCol);
 
-        historyTable.getColumns().addAll(idColH, nameColH, urgencyColH);
+        // Ajustement automatique de la largeur des colonnes
+        historyTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        // Chargement des données COMPLETED
+        // Requête asynchrone vers ton endpoint Backend
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:8080/api/tickets/history"))
                 .GET()
@@ -347,13 +388,17 @@ public class DashboardController {
                 .thenAccept(json -> {
                     Ticket[] history = gson.fromJson(json, Ticket[].class);
                     Platform.runLater(() -> historyTable.getItems().setAll(history));
+                })
+                .exceptionally(ex -> {
+                    ex.printStackTrace();
+                    return null;
                 });
 
-        VBox layout = new VBox(10, new Label("Patients déjà consultés"), historyTable);
-        layout.setStyle("-fx-padding: 20;");
-        historyStage.setScene(new Scene(layout, 500, 400));
+        // Mise en page de la fenêtre
+        VBox layout = new VBox(15, new Label("Archives des Patients (Consultés & Absents)"), historyTable);
+        layout.setStyle("-fx-padding: 25; -fx-background-color: #f4f7f6;");
+
+        historyStage.setScene(new Scene(layout, 750, 500));
         historyStage.show();
-
-
     }
 }

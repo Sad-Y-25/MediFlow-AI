@@ -6,7 +6,9 @@ import com.mediflow.repository.TicketRepository; // Import manquant
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/tickets")
@@ -41,6 +43,16 @@ public class TicketController {
 
     @GetMapping("/history")
     public List<Ticket> getHistory() {
-        return ticketRepository.findByStatus("COMPLETED");
+        // On récupère les tickets terminés ou absents
+        return ticketRepository.findAll().stream()
+                .filter(t -> "COMPLETED".equals(t.getStatus()) || "ABSENT".equals(t.getStatus()))
+                .sorted(Comparator.comparing(Ticket::getCompletedAt).reversed()) // Les plus récents en haut
+                .collect(Collectors.toList());
+    }
+    @PutMapping("/{id}/absent")
+    public ResponseEntity<Void> markAbsent(@PathVariable Long id) {
+        // Appelle la logique métier pour changer le statut en "ABSENT"
+        ticketService.markAsAbsent(id);
+        return ResponseEntity.ok().build();
     }
 }
