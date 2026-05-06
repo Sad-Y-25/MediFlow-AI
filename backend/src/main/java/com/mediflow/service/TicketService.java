@@ -18,17 +18,19 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final PriorityService priorityService; // Ton moteur IA
     private final MedicalServiceRepository medicalServiceRepository;
-
+    private final com.mediflow.repository.DoctorRepository doctorRepository; // Injected
     private final EmailService emailService;
 
     public TicketService(TicketRepository ticketRepository,
                          PriorityService priorityService,
                          MedicalServiceRepository medicalServiceRepository,
-                         EmailService emailService) { // Ajoute ce paramètre
+                         com.mediflow.repository.DoctorRepository doctorRepository,
+                         EmailService emailService) { 
         this.ticketRepository = ticketRepository;
         this.priorityService = priorityService;
         this.medicalServiceRepository = medicalServiceRepository;
-        this.emailService = emailService; // Initialise-le ici
+        this.doctorRepository = doctorRepository;
+        this.emailService = emailService; 
     }
 
     public List<Ticket> getPriorityQueue() {
@@ -128,5 +130,18 @@ public class TicketService {
         this.getPriorityQueue();
     }
 
+    public Ticket assignDoctor(Long ticketId, Long doctorId) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found with id: " + ticketId));
+        
+        com.mediflow.entity.Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new RuntimeException("Doctor not found with id: " + doctorId));
+                
+        ticket.setDoctor(doctor);
+        ticket.setStatus("IN_CONSULTATION"); // Or CALLED, depends on the workflow
+        ticket.setConsultationStartedAt(LocalDateTime.now());
+        
+        return ticketRepository.save(ticket);
+    }
 
 }

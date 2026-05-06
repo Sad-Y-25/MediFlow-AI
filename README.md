@@ -26,6 +26,11 @@ $$PriorityScore = (\text{UrgencyLevel} \times 10) + \text{AgeFactor} + \text{App
 - **Absence Handling:** Receptionists can mark patients as "Absent". The system instantly archives the ticket and shifts the entire queue forward, recalculating wait times for all remaining patients.
 - **Historical Traceability:** A dedicated History View tracks all `Completed` and `Absent` patients, recording precise arrival and departure times for clinic performance analytics.
 
+### 4. Doctor Management (Doctor's Module)
+
+- **Doctor Registration & Assignment:** Administrators can register new doctors and assign them to specific medical services (e.g., Cardiology, General Medicine).
+- **Consultation Lifecycle:** Receptionists can dynamically assign waiting tickets to specific doctors, ensuring a smooth transition from the waiting room to the consultation phase.
+
 ---
 
 ## 🛠️ Technical Stack
@@ -94,15 +99,15 @@ Launch the JavaFX application. The dashboard will automatically sync with the ba
 
 ---
 
-## 📊 Project Status
+## 🚀 Project Status
 
 | Module | Status |
 |---|---|
 | Receptionist Module | ✅ 100% Complete |
-| Doctor's Module | 🔄 In Progress |
+| Doctor's Module | ✅ 100% Complete |
 
-**Next Milestone:** Doctor's Module — Patient calling, consultation notes, and medical session closure.
+**Next Milestone:** Administrator Module & Enhanced Analytics Dashboard.
 
 ---
 
-> *MediFlow AI — Engineering smarter care, one queue at a time.*
+> *MediFlow AI – Engineering smarter care, one queue at a time.*

@@ -9,7 +9,14 @@ import java.util.Map;
 
 public class AuthApiService {
     private final HttpClient client = HttpClient.newHttpClient();
-    private final Gson gson = new Gson();
+    private final Gson gson = new com.google.gson.GsonBuilder()
+            .registerTypeAdapter(java.time.LocalDateTime.class, (com.google.gson.JsonDeserializer<java.time.LocalDateTime>) (json, typeOfT, context) -> {
+                return java.time.LocalDateTime.parse(json.getAsString());
+            })
+            .registerTypeAdapter(java.time.LocalDateTime.class, (com.google.gson.JsonSerializer<java.time.LocalDateTime>) (src, typeOfSrc, context) -> {
+                return new com.google.gson.JsonPrimitive(src.toString());
+            })
+            .create();
     private final String API_URL = "http://localhost:8080/api/auth/login";
 
     public String login(String email, String password) throws Exception {

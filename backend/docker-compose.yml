@@ -9,6 +9,8 @@ services:
       MYSQL_ROOT_PASSWORD: password
     ports:
       - "3306:3306"
+    volumes:
+      - ../DB.sql:/docker-entrypoint-initdb.d/init.sql
 
   # --- TON APPLICATION BACKEND ---
   backend:
@@ -22,3 +24,11 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/mediflow_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=password
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8081:8080" # Maps port 8081 on your machine to Adminer's internal port 8080
+    depends_on:
+      - db

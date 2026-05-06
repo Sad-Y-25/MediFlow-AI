@@ -49,7 +49,14 @@ public class DashboardController {
     private FilteredList<Ticket> filteredData;
     private ObservableList<Ticket> masterData = FXCollections.observableArrayList();
     private final HttpClient client = HttpClient.newHttpClient();
-    private final Gson gson = new Gson();
+    private final Gson gson = new com.google.gson.GsonBuilder()
+            .registerTypeAdapter(java.time.LocalDateTime.class, (com.google.gson.JsonDeserializer<java.time.LocalDateTime>) (json, typeOfT, context) -> {
+                return java.time.LocalDateTime.parse(json.getAsString());
+            })
+            .registerTypeAdapter(java.time.LocalDateTime.class, (com.google.gson.JsonSerializer<java.time.LocalDateTime>) (src, typeOfSrc, context) -> {
+                return new com.google.gson.JsonPrimitive(src.toString());
+            })
+            .create();
     private final String API_URL = "http://localhost:8080/api/tickets/queue";
 
     @FXML
@@ -87,20 +94,41 @@ public class DashboardController {
             }
         });
 
-        // 4. Configuration du Bouton d'Action "Terminer"
+        // 4. Configuration des Boutons d'Action ("Terminer", "Absent", "Assigner")
         actionCol.setCellFactory(param -> new TableCell<>() {
-            private final Button btn = new Button("Terminer");
+            private final Button btnTerminer = new Button("Terminer");
+            private final Button btnAbsent = new Button("Absent");
+            private final Button btnAssigner = new Button("Assigner");
+            private final HBox container = new HBox(5, btnTerminer, btnAbsent, btnAssigner);
+
             {
-                btn.getStyleClass().add("button-terminate"); // Utilise le CSS
-                btn.setOnAction(event -> {
+                btnTerminer.getStyleClass().add("button-terminate");
+                btnTerminer.setOnAction(event -> {
                     Ticket ticket = getTableView().getItems().get(getIndex());
                     processCompletion(ticket.getId());
                 });
+
+                btnAbsent.setStyle("-fx-background-color: #f39c12; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                btnAbsent.setOnAction(event -> {
+                    Ticket ticket = getTableView().getItems().get(getIndex());
+                    handleMarkAbsent(ticket.getId());
+                });
+
+                btnAssigner.setStyle("-fx-background-color: #8e44ad; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                btnAssigner.setOnAction(event -> {
+                    Ticket ticket = getTableView().getItems().get(getIndex());
+                    assignDoctorPrompt(ticket.getId());
+                });
             }
+
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : btn);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(container);
+                }
             }
         });
 
@@ -113,29 +141,6 @@ public class DashboardController {
                 reasonInput.setStyle("-fx-border-color: #e74c3c; -fx-border-width: 2;");
             } else {
                 reasonInput.setStyle("");
-            }
-        });
-
-        actionCol.setCellFactory(param -> new TableCell<>() {
-            private final Button btnAbsent = new Button("Absent");
-            private final HBox container = new HBox(10, btnAbsent); // Conteneur pour les boutons
-
-            {
-                btnAbsent.setStyle("-fx-background-color: #f39c12; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-                btnAbsent.setOnAction(event -> {
-                    Ticket ticket = getTableView().getItems().get(getIndex());
-                    handleMarkAbsent(ticket.getId());
-                });
-            }
-
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty) {
-                    setGraphic(null);
-                } else {
-                    setGraphic(container);
-                }
             }
         });
 
@@ -166,6 +171,45 @@ public class DashboardController {
                     return null;
                 });
     }
+    private void assignDoctorPrompt(Long ticketId) {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Assigner un Médecin");
+        dialog.setHeaderText("Assignation au Ticket " + ticketId);
+        dialog.setContentText("Veuillez entrer l'ID du médecin :");
+
+        dialog.showAndWait().ifPresent(doctorIdStr -> {
+            try {
+                Long doctorId = Long.parseLong(doctorIdStr);
+                
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:8080/api/tickets/" + ticketId + "/assign/" + doctorId))
+                        .header("Content-Type", "application/json")
+                        .PUT(HttpRequest.BodyPublishers.noBody())
+                        .build();
+
+                client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                        .thenAccept(response -> {
+                            if (response.statusCode() == 200) {
+                                Platform.runLater(this::loadDataFromServer);
+                            } else {
+                                Platform.runLater(() -> {
+                                    Alert alert = new Alert(Alert.AlertType.ERROR, "Erreur lors de l'assignation: " + response.body());
+                                    alert.show();
+                                });
+                            }
+                        })
+                        .exceptionally(ex -> {
+                            ex.printStackTrace();
+                            return null;
+                        });
+                        
+            } catch (NumberFormatException e) {
+                Alert alert = new Alert(Alert.AlertType.ERROR, "L'ID doit être un nombre valide.");
+                alert.show();
+            }
+        });
+    }
+
     /**
      * Analyse sémantique basique pour définir l'urgence (NLP).
      */
@@ -400,5 +444,22 @@ public class DashboardController {
 
         historyStage.setScene(new Scene(layout, 750, 500));
         historyStage.show();
+    }
+
+    /**
+     * Ouvre la fenêtre de gestion des médecins.
+     */
+    @FXML
+    private void showDoctors() {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/com/mediflow/ui/DoctorsView.fxml"));
+            javafx.scene.Parent root = loader.load();
+            Stage doctorsStage = new Stage();
+            doctorsStage.setTitle("MediFlow AI - Gestion des Médecins");
+            doctorsStage.setScene(new Scene(root, 800, 600));
+            doctorsStage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

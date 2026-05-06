@@ -1,5 +1,3 @@
-CREATE DATABASE mediflow;
-USE mediflow;
 
 CREATE TABLE users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -16,7 +14,6 @@ INSERT INTO users (full_name, email, password, role)
 VALUES ('Youssef Admin', 'admin@mediflow.com', 'admin123', 'ADMIN');
 
 
-USE mediflow;
 
 CREATE TABLE IF NOT EXISTS tickets (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -36,7 +33,6 @@ INSERT INTO tickets (patient_name, reason, urgency_level, status) VALUES
 
 UPDATE tickets SET created_at = NOW() WHERE created_at IS NULL;
 
-USE mediflow;
 
 -- 1. Création de la table 'patients' (Section 14.2)
 CREATE TABLE IF NOT EXISTS patients (
@@ -63,7 +59,16 @@ INSERT INTO medical_services (name, average_consultation_time) VALUES
 ('Cardiologie', 10),
 ('Dentisterie', 12);
 
--- 3. Création de la table 'queue_tickets' avec Clés Étrangères (Section 14.3)
+-- 3. Création de la table 'doctors'
+CREATE TABLE IF NOT EXISTS doctors (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNIQUE NOT NULL,
+    service_id BIGINT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (service_id) REFERENCES medical_services(id)
+);
+
+-- 4. Création de la table 'queue_tickets' avec Clés Étrangères (Section 14.3)
 CREATE TABLE IF NOT EXISTS queue_tickets (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     ticket_number VARCHAR(20) UNIQUE NOT NULL,
@@ -85,5 +90,5 @@ CREATE TABLE IF NOT EXISTS queue_tickets (
 
     FOREIGN KEY (patient_id) REFERENCES patients(id),
     FOREIGN KEY (service_id) REFERENCES medical_services(id),
-    FOREIGN KEY (doctor_id) REFERENCES users(id)
+    FOREIGN KEY (doctor_id) REFERENCES doctors(id)
 );

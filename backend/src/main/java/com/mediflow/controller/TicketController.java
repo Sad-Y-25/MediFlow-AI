@@ -55,4 +55,9 @@ public class TicketController {
         ticketService.markAsAbsent(id);
         return ResponseEntity.ok().build();
     }
+
+    @PutMapping("/{id}/assign/{doctorId}")
+    public ResponseEntity<Ticket> assignDoctor(@PathVariable Long id, @PathVariable Long doctorId) {
+        return ResponseEntity.ok(ticketService.assignDoctor(id, doctorId));
+    }
 }

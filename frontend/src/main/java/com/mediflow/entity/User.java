@@ -1,7 +1,6 @@
 package com.mediflow.entity;
 
 
-import java.time.LocalDateTime;
 
 public class User {
 
@@ -19,10 +18,24 @@ public class User {
     private String role; // ADMIN, RECEPTIONIST, DOCTOR, PATIENT
 
     private Boolean enabled = true;
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private String createdAt;
 
-    // Méthode utilitaire demandée dans le diagramme de classes
     public boolean hasRole(String roleName) {
         return this.role.equals(roleName);
     }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+    public Boolean getEnabled() { return enabled; }
+    public void setEnabled(Boolean enabled) { this.enabled = enabled; }
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
 }

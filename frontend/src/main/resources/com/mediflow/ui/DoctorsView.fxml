@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="15" style="-fx-padding: 20; -fx-background-color: #f8f9fa;"
+      xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.mediflow.ui.controller.DoctorsController"
+      stylesheets="@/style.css">
+
+    <Label text="Gestion des Médecins" style="-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+
+    <HBox spacing="20">
+        <!-- Section Ajout -->
+        <VBox spacing="10" prefWidth="250" style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #dee2e6; -fx-border-radius: 5;">
+            <Label text="Nouveau Médecin" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+            
+            <TextField fx:id="nameInput" promptText="Nom complet"/>
+            <TextField fx:id="emailInput" promptText="Email"/>
+            <PasswordField fx:id="passwordInput" promptText="Mot de passe"/>
+            <ComboBox fx:id="serviceInput" promptText="Service Médical" prefWidth="230"/>
+            
+            <Button text="Enregistrer" onAction="#handleAddDoctor" maxWidth="Infinity" styleClass="button-add"/>
+        </VBox>
+
+        <!-- Liste des médecins -->
+        <TableView fx:id="doctorsTable" HBox.hgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="idCol" text="ID" prefWidth="50"/>
+                <TableColumn fx:id="nameCol" text="Nom" prefWidth="150"/>
+                <TableColumn fx:id="emailCol" text="Email" prefWidth="180"/>
+                <TableColumn fx:id="serviceCol" text="Service" prefWidth="150"/>
+            </columns>
+        </TableView>
+    </HBox>
+</VBox>

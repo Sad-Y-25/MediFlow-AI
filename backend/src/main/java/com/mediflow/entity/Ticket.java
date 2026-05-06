@@ -25,6 +25,14 @@ public class Ticket {
     @JoinColumn(name = "service_id")
     private MedicalService service;
 
+    /**
+     * The Doctor assigned to this ticket.
+     * Maps to the doctor_id column in queue_tickets.
+     */
+    @ManyToOne
+    @JoinColumn(name = "doctor_id")
+    private Doctor doctor;
+
     // --- CHAMPS IA & TRIAGE ---
     @Column(name = "urgency_level")
     private String urgencyLevel;

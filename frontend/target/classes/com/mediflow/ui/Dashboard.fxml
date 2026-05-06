@@ -86,8 +86,12 @@
 
 
         </TableView>
-        <Button text="Voir l'Historique" onAction="#showHistory"
-                style="-fx-background-color: #34495e; -fx-text-fill: white;"/>
+        <HBox spacing="10">
+            <Button text="Voir l'Historique" onAction="#showHistory"
+                    style="-fx-background-color: #34495e; -fx-text-fill: white;"/>
+            <Button text="Gérer les Médecins" onAction="#showDoctors"
+                    style="-fx-background-color: #27ae60; -fx-text-fill: white;"/>
+        </HBox>
     </VBox>
 
 </HBox>
