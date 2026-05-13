@@ -1,5 +1,6 @@
 package com.mediflow.controller;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -12,7 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mediflow.entity.User;
+import com.mediflow.entity.Doctor;
 import com.mediflow.service.AuthService;
+import com.mediflow.repository.DoctorRepository;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -20,9 +23,11 @@ import com.mediflow.service.AuthService;
 public class AuthController {
 
     private final AuthService authService;
+    private final DoctorRepository doctorRepository;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, DoctorRepository doctorRepository) {
         this.authService = authService;
+        this.doctorRepository = doctorRepository;
     }
 
     @PostMapping("/login")
@@ -33,13 +38,18 @@ public class AuthController {
         Optional<User> user = authService.authenticate(email, password);
 
         if (user.isPresent()) {
-            // On renvoie les infos de l'utilisateur (sans le mot de passe pour la sécurité)
             User authenticatedUser = user.get();
-            return ResponseEntity.ok(Map.of(
-                "id", authenticatedUser.getId(),
-                "fullName", authenticatedUser.getFullName(),
-                "role", authenticatedUser.getRole()
-            ));
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("id", authenticatedUser.getId());
+            responseData.put("fullName", authenticatedUser.getFullName());
+            responseData.put("role", authenticatedUser.getRole());
+
+            if ("DOCTOR".equals(authenticatedUser.getRole())) {
+                Optional<Doctor> doctorOpt = doctorRepository.findByUserId(authenticatedUser.getId());
+                doctorOpt.ifPresent(doc -> responseData.put("doctorId", doc.getId()));
+            }
+
+            return ResponseEntity.ok(responseData);
         } else {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                  .body("Email ou mot de passe incorrect.");

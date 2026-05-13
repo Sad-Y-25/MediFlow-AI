@@ -138,9 +138,19 @@ public class TicketService {
                 .orElseThrow(() -> new RuntimeException("Doctor not found with id: " + doctorId));
                 
         ticket.setDoctor(doctor);
-        ticket.setStatus("IN_CONSULTATION"); // Or CALLED, depends on the workflow
+        // Receptionist just assigns it, it stays WAITING until doctor starts it
+        return ticketRepository.save(ticket);
+    }
+
+    public List<Ticket> getDoctorQueue(Long doctorId) {
+        return ticketRepository.findByDoctorIdAndStatusInOrderByPriorityScoreDesc(doctorId, List.of("WAITING", "IN_CONSULTATION"));
+    }
+
+    public Ticket startConsultation(Long ticketId) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket introuvable"));
+        ticket.setStatus("IN_CONSULTATION");
         ticket.setConsultationStartedAt(LocalDateTime.now());
-        
         return ticketRepository.save(ticket);
     }
 

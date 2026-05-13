@@ -60,4 +60,14 @@ public class TicketController {
     public ResponseEntity<Ticket> assignDoctor(@PathVariable Long id, @PathVariable Long doctorId) {
         return ResponseEntity.ok(ticketService.assignDoctor(id, doctorId));
     }
+
+    @GetMapping("/doctor/{doctorId}/queue")
+    public List<Ticket> getDoctorQueue(@PathVariable Long doctorId) {
+        return ticketService.getDoctorQueue(doctorId);
+    }
+
+    @PutMapping("/{id}/start")
+    public ResponseEntity<Ticket> startConsultation(@PathVariable Long id) {
+        return ResponseEntity.ok(ticketService.startConsultation(id));
+    }
 }

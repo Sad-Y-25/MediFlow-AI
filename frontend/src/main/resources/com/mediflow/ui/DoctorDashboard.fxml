@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.control.cell.PropertyValueFactory?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="20" style="-fx-padding: 20; -fx-background-color: #f8f9fa;"
+      xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.mediflow.ui.controller.DoctorDashboardController"
+      stylesheets="@/style.css">
+
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="20" style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #dee2e6; -fx-border-radius: 8;">
+        <Label fx:id="welcomeLabel" text="Tableau de Bord - Docteur" style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+        <Region HBox.hgrow="ALWAYS" />
+        <Button text="Rafraîchir" onAction="#refreshQueue" style="-fx-background-color: #1abc9c; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button text="Déconnexion" onAction="#logout" style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold;"/>
+    </HBox>
+
+    <!-- Main Content -->
+    <VBox spacing="10" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #dee2e6; -fx-border-radius: 8;">
+        <Label text="Mes Patients (File d'Attente)" style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
+        
+        <TableView fx:id="queueTable" VBox.vgrow="ALWAYS" style="-fx-font-size: 14;">
+            <columns>
+                <TableColumn text="N° Ticket" prefWidth="100">
+                    <cellValueFactory><PropertyValueFactory property="ticketNumber"/></cellValueFactory>
+                </TableColumn>
+                <TableColumn text="Score IA" prefWidth="80">
+                    <cellValueFactory><PropertyValueFactory property="priorityScore"/></cellValueFactory>
+                </TableColumn>
+                <TableColumn text="Patient" prefWidth="180">
+                    <cellValueFactory><PropertyValueFactory property="patientName"/></cellValueFactory>
+                </TableColumn>
+                <TableColumn text="Urgence" prefWidth="100">
+                    <cellValueFactory><PropertyValueFactory property="urgencyLevel"/></cellValueFactory>
+                </TableColumn>
+                <TableColumn text="Statut" prefWidth="140">
+                    <cellValueFactory><PropertyValueFactory property="status"/></cellValueFactory>
+                </TableColumn>
+                <TableColumn text="Attente Estimée" prefWidth="120">
+                    <cellValueFactory><PropertyValueFactory property="estimatedWaitingTime"/></cellValueFactory>
+                </TableColumn>
+            </columns>
+        </TableView>
+
+        <!-- Actions -->
+        <HBox spacing="15" alignment="CENTER_RIGHT" style="-fx-padding: 10 0 0 0;">
+            <Button text="Démarrer Consultation" onAction="#startConsultation" style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20;"/>
+            <Button text="Terminer Consultation" onAction="#completeConsultation" style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20;"/>
+        </HBox>
+    </VBox>
+</VBox>
