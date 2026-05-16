@@ -44,6 +44,7 @@ public class DashboardController {
     @FXML private CheckBox appointmentInput;         // Nouvelle case Rendez-vous
     @FXML private ComboBox<String> urgencyInput;
     @FXML private TextField emailInput;
+    @FXML private TableColumn<Ticket, String> doctorCol;
 
     // --- VARIABLES GLOBALES ---
     private FilteredList<Ticket> filteredData;
@@ -61,13 +62,17 @@ public class DashboardController {
 
     @FXML
     public void initialize() {
-        // 1. Configuration des colonnes
+        // 1. Configuration des colonnes existantes
         idCol.setCellValueFactory(new PropertyValueFactory<>("ticketNumber"));
-        nameCol.setCellValueFactory(new PropertyValueFactory<>("patientName")); // Utilise le getter intelligent
+        nameCol.setCellValueFactory(new PropertyValueFactory<>("patientName"));
         urgencyCol.setCellValueFactory(new PropertyValueFactory<>("urgencyLevel"));
         scoreCol.setCellValueFactory(new PropertyValueFactory<>("priorityScore"));
         waitCol.setCellValueFactory(new PropertyValueFactory<>("estimatedWaitingTime"));
 
+        // Liaison de la nouvelle colonne avec tes getters intelligents de Ticket.java
+        doctorCol.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getDoctorName() + " [" + cellData.getValue().getServiceName() + "]"
+        ));
         // 2. Chargement initial des données
         loadDataFromServer();
 

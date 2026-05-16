@@ -81,14 +81,15 @@
         <TableView fx:id="ticketTable" VBox.vgrow="ALWAYS">
             <columns>
                 <TableColumn fx:id="idCol" text="Ticket" prefWidth="90"/>
-                <TableColumn fx:id="nameCol" text="Nom du Patient" prefWidth="180"/>
+                <TableColumn fx:id="nameCol" text="Nom du Patient" prefWidth="160"/>
                 <TableColumn fx:id="urgencyCol" text="Urgence" prefWidth="80"/>
                 <TableColumn fx:id="scoreCol" text="Score IA" prefWidth="80"/>
-                <TableColumn fx:id="waitCol" text="Attente (min)" prefWidth="100"/>
-                <TableColumn fx:id="actionCol" text="Actions" prefWidth="100"/>
+
+                <TableColumn fx:id="doctorCol" text="Médecin / Service" prefWidth="180"/>
+
+                <TableColumn fx:id="waitCol" text="Attente (min)" prefWidth="90"/>
+                <TableColumn fx:id="actionCol" text="Actions" prefWidth="220"/>
             </columns>
-
-
         </TableView>
         <HBox spacing="10">
             <Button text="Voir l'Historique" onAction="#showHistory"

@@ -34,51 +34,74 @@ public class TicketService {
     }
 
     public List<Ticket> getPriorityQueue() {
+        // 1. On récupère tous les patients au statut WAITING dans la clinique
         List<Ticket> waitingTickets = ticketRepository.findByStatus("WAITING");
 
-        // 1. Recalculer les scores IA pour tout le monde
+        // 2. Recalculer les scores IA de priorité pour tout le monde
         waitingTickets.forEach(priorityService::calculateAndSetScore);
 
-        // 2. Trier : Score le plus élevé en premier, puis par date (FIFO) en cas d'égalité
-        waitingTickets = waitingTickets.stream()
+        // 3. --- L'ASTUCE --- On groupe les patients par ID de médecin assigné
+        // Si aucun médecin n'est assigné, on les met ensemble dans le groupe -1L (triage général)
+        java.util.Map<Long, List<Ticket>> ticketsByDoctor = waitingTickets.stream()
+                .collect(Collectors.groupingBy(t -> t.getDoctor() != null ? t.getDoctor().getId() : -1L));
+
+        // 4. On calcule l'ordre et le temps d'attente individuellement pour CHAQUE file de médecin
+        ticketsByDoctor.forEach((doctorId, doctorTickets) -> {
+            // On trie la file spécifique de CE médecin par score décroissant
+            List<Ticket> sortedDoctorTickets = doctorTickets.stream()
+                    .sorted(Comparator.comparingInt(Ticket::getPriorityScore).reversed()
+                            .thenComparing(Ticket::getCreatedAt))
+                    .collect(Collectors.toList());
+
+            // On applique les positions et temps d'attente au sein de CETTE file uniquement
+            for (int i = 0; i < sortedDoctorTickets.size(); i++) {
+                Ticket t = sortedDoctorTickets.get(i);
+                t.setPositionNumber(i + 1); // Position 1, 2, 3... pour CE médecin
+
+                // Récupération du temps moyen du service du médecin
+                int avgTime = 10;
+                if (t.getDoctor() != null && t.getDoctor().getService() != null && t.getDoctor().getService().getAverageConsultationTime() != null) {
+                    avgTime = t.getDoctor().getService().getAverageConsultationTime();
+                } else if (t.getService() != null && t.getService().getAverageConsultationTime() != null) {
+                    avgTime = t.getService().getAverageConsultationTime();
+                }
+
+                // Calcul du temps d'attente cloisonné
+                t.setEstimatedWaitingTime(i * avgTime);
+                ticketRepository.save(t);
+            }
+        });
+
+        // 5. On retourne la liste complète triée globalement par score pour l'IHM du réceptionniste
+        return waitingTickets.stream()
                 .sorted(Comparator.comparingInt(Ticket::getPriorityScore).reversed()
                         .thenComparing(Ticket::getCreatedAt))
                 .collect(Collectors.toList());
-
-        // 3. Assigner les positions et le temps estimé
-        for (int i = 0; i < waitingTickets.size(); i++) {
-            Ticket t = waitingTickets.get(i);
-            t.setPositionNumber(i + 1);
-
-            // Sécurité : On récupère le temps moyen, sinon 10 min par défaut
-            int avgTime = (t.getService() != null && t.getService().getAverageConsultationTime() != null)
-                    ? t.getService().getAverageConsultationTime() : 10;
-
-            t.setEstimatedWaitingTime(i * avgTime);
-            ticketRepository.save(t);
-        }
-
-        return waitingTickets;
     }
 
     public Ticket createTicket(Ticket ticket) {
-        // 1. Setup de base
+        // 1. Configuration initiale de base
         ticket.setStatus("WAITING");
         ticket.setCreatedAt(LocalDateTime.now());
-        ticket.setTicketNumber("TCK-" + System.currentTimeMillis());
+        ticket.setTicketNumber("PENDING"); // Libellé temporaire avant génération de l'ID
         priorityService.calculateAndSetScore(ticket);
 
-        // 2. Sauvegarde initiale
-        ticketRepository.save(ticket);
+        // 2. Première sauvegarde pour forcer MySQL à générer l'ID unique auto-incrémenté
+        Ticket savedTicket = ticketRepository.save(ticket);
 
-        // 3. --- CRUCIAL --- On recalcule toute la file pour avoir les positions exactes
-        // Cette méthode met à jour les positionNumber et estimatedWaitingTime de tout le monde
+        // 3. Génération du numéro d'usage court et professionnel (Ex: ID 5 devient TCK-005)
+        savedTicket.setTicketNumber(String.format("TCK-%03d", savedTicket.getId()));
+
+        // Sauvegarde finale du numéro formaté
+        ticketRepository.save(savedTicket);
+
+        // 4. Recalcul complet de la file pour mettre à jour les positions et temps d'attente
         this.getPriorityQueue();
 
-        // 4. On recharge le ticket mis à jour depuis la DB pour avoir les vraies valeurs
-        Ticket updatedTicket = ticketRepository.findById(ticket.getId()).orElse(ticket);
+        // 5. Rechargement complet du ticket depuis la base de données
+        Ticket updatedTicket = ticketRepository.findById(savedTicket.getId()).orElse(savedTicket);
 
-        // 5. Envoi de l'email avec les données réelles (non nulles)
+        // 6. Envoi de l'email de confirmation au patient avec le numéro propre
         emailService.sendInitialEmail(updatedTicket);
 
         return updatedTicket;

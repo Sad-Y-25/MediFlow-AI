@@ -24,10 +24,11 @@
 
         <TableView fx:id="publicQueueTable" VBox.vgrow="ALWAYS" style="-fx-font-size: 18px;">
             <columns>
-                <TableColumn fx:id="positionCol" text="Position" prefWidth="120" style="-fx-alignment: CENTER;" />
-                <TableColumn fx:id="ticketCol" text="Code Ticket" prefWidth="220" style="-fx-alignment: CENTER;" />
-                <TableColumn fx:id="patientCol" text="Patient (Anonymisé)" prefWidth="280" style="-fx-alignment: CENTER_LEFT;" />
-                <TableColumn fx:id="waitCol" text="Attente Estimée" prefWidth="220" style="-fx-alignment: CENTER;" />
+                <TableColumn fx:id="positionCol" text="Position" prefWidth="90" style="-fx-alignment: CENTER;" />
+                <TableColumn fx:id="ticketCol" text="Code Ticket" prefWidth="160" style="-fx-alignment: CENTER;" />
+                <TableColumn fx:id="patientCol" text="Patient (Anonymisé)" prefWidth="220" style="-fx-alignment: CENTER_LEFT;" />
+                <TableColumn fx:id="doctorCol" text="Médecin / Service Affecté" prefWidth="250" style="-fx-alignment: CENTER_LEFT;" />
+                <TableColumn fx:id="waitCol" text="Attente Estimée" prefWidth="140" style="-fx-alignment: CENTER;" />
             </columns>
             <columnResizePolicy>
                 <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

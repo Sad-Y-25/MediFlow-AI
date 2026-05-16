@@ -26,6 +26,7 @@ public class WaitingRoomController {
     @FXML private TableColumn<Ticket, String> ticketCol;
     @FXML private TableColumn<Ticket, String> patientCol;
     @FXML private TableColumn<Ticket, String> waitCol;
+    @FXML private TableColumn<Ticket, String> doctorCol;
 
     private final ObservableList<Ticket> publicQueueList = FXCollections.observableArrayList();
     private final HttpClient client = HttpClient.newHttpClient();
@@ -42,10 +43,16 @@ public class WaitingRoomController {
 
     @FXML
     public void initialize() {
+
+
         // 1. Liaison des colonnes de l'écran public
         positionCol.setCellValueFactory(new PropertyValueFactory<>("positionNumber"));
         ticketCol.setCellValueFactory(new PropertyValueFactory<>("ticketNumber"));
 
+        // Liaison de la nouvelle colonne dépendante du médecin
+        doctorCol.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getDoctorName() + " (" + cellData.getValue().getServiceName() + ")"
+        ));
         // Formate le temps restant pour ajouter la mention "min" explicitement
         waitCol.setCellValueFactory(cellData -> {
             Integer time = cellData.getValue().getEstimatedWaitingTime();
