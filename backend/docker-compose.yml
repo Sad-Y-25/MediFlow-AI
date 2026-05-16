@@ -14,21 +14,20 @@ services:
 
   # --- TON APPLICATION BACKEND ---
   backend:
-    build: .   # <--- LE POINT SIGNIFIE "ICI" (le dossier actuel)
+    build: .
     container_name: mediflow_backend_container
     ports:
       - "8080:8080"
     depends_on:
       - db
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/mediflow_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_PROFILES_ACTIVE=docker # <--- Active le profil de production Docker
 
+  # --- INTERFACE DE GESTION BD ---
   adminer:
     image: adminer
     restart: always
     ports:
-      - "8081:8080" # Maps port 8081 on your machine to Adminer's internal port 8080
+      - "8081:8080"
     depends_on:
       - db

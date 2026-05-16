@@ -172,42 +172,105 @@ public class DashboardController {
                 });
     }
     private void assignDoctorPrompt(Long ticketId) {
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Assigner un Médecin");
-        dialog.setHeaderText("Assignation au Ticket " + ticketId);
-        dialog.setContentText("Veuillez entrer l'ID du médecin :");
+        // 1. Appel asynchrone au Backend pour récupérer la liste de TOUS les médecins existants
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8080/api/doctors"))
+                .GET()
+                .build();
 
-        dialog.showAndWait().ifPresent(doctorIdStr -> {
-            try {
-                Long doctorId = Long.parseLong(doctorIdStr);
-                
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/tickets/" + ticketId + "/assign/" + doctorId))
-                        .header("Content-Type", "application/json")
-                        .PUT(HttpRequest.BodyPublishers.noBody())
-                        .build();
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(HttpResponse::body)
+                .thenAccept(jsonBody -> {
+                    // Désérialisation propre du flux JSON en Liste d'objets Doctor
+                    java.lang.reflect.Type listType = new com.google.gson.reflect.TypeToken<java.util.List<com.mediflow.entity.Doctor>>(){}.getType();
+                    java.util.List<com.mediflow.entity.Doctor> doctors = gson.fromJson(jsonBody, listType);
 
-                client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                        .thenAccept(response -> {
-                            if (response.statusCode() == 200) {
-                                Platform.runLater(this::loadDataFromServer);
-                            } else {
-                                Platform.runLater(() -> {
-                                    Alert alert = new Alert(Alert.AlertType.ERROR, "Erreur lors de l'assignation: " + response.body());
-                                    alert.show();
-                                });
+                    // 2. Retour sur le thread principal de l'IHM (UI Thread) pour afficher la fenêtre
+                    Platform.runLater(() -> {
+                        if (doctors == null || doctors.isEmpty()) {
+                            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Aucun médecin n'est actuellement enregistré dans le système.");
+                            alert.show();
+                            return;
+                        }
+
+                        // Création d'un dialogue JavaFX personnalisé
+                        Dialog<com.mediflow.entity.Doctor> dialog = new Dialog<>();
+                        dialog.setTitle("MediFlow AI - Affectation Médicale");
+                        dialog.setHeaderText("Sélectionnez le médecin pour le Ticket N° " + ticketId);
+
+                        // Ajout des boutons de validation professionnels
+                        ButtonType assignButtonType = new ButtonType("Assigner", ButtonBar.ButtonData.OK_DONE);
+                        dialog.getDialogPane().getButtonTypes().addAll(assignButtonType, ButtonType.CANCEL);
+
+                        // Instanciation de la ComboBox alimentée par notre liste d'objets
+                        ComboBox<com.mediflow.entity.Doctor> doctorComboBox = new ComboBox<>();
+                        doctorComboBox.setItems(FXCollections.observableArrayList(doctors));
+                        doctorComboBox.setPrefWidth(280);
+
+                        // --- CELL FACTORY : Règle l'affichage humain tout en gardant l'objet métier ---
+                        doctorComboBox.setCellFactory(param -> new ListCell<>() {
+                            @Override
+                            protected void updateItem(com.mediflow.entity.Doctor item, boolean empty) {
+                                super.updateItem(item, empty);
+                                if (empty || item == null || item.getUser() == null) {
+                                    setText(null);
+                                } else {
+                                    String serviceName = item.getService() != null ? item.getService().getName() : "Général";
+                                    setText("Dr. " + item.getUser().getFullName() + " [" + serviceName + "]");
+                                }
                             }
-                        })
-                        .exceptionally(ex -> {
-                            ex.printStackTrace();
+                        });
+
+                        // Applique la même règle d'affichage pour l'élément sélectionné visible à l'écran
+                        doctorComboBox.setButtonCell(doctorComboBox.getCellFactory().call(null));
+                        doctorComboBox.getSelectionModel().selectFirst(); // Sélectionne le premier par défaut
+
+                        // Agencement de la fenêtre pop-up
+                        VBox content = new VBox(10, new Label("Praticiens disponibles :"), doctorComboBox);
+                        content.setStyle("-fx-padding: 15;");
+                        dialog.getDialogPane().setContent(content);
+
+                        // Convertisseur pour lier le clic sur "Assigner" à l'objet complet sélectionné
+                        dialog.setResultConverter(dialogButton -> {
+                            if (dialogButton == assignButtonType) {
+                                return doctorComboBox.getSelectionModel().getSelectedItem();
+                            }
                             return null;
                         });
-                        
-            } catch (NumberFormatException e) {
-                Alert alert = new Alert(Alert.AlertType.ERROR, "L'ID doit être un nombre valide.");
-                alert.show();
-            }
-        });
+
+                        // 3. Attente de la validation de l'utilisateur et envoi synchrone de l'ID à l'API
+                        dialog.showAndWait().ifPresent(selectedDoctor -> {
+                            Long doctorId = selectedDoctor.getId(); // On extrait l'ID de manière totalement transparente !
+
+                            HttpRequest assignRequest = HttpRequest.newBuilder()
+                                    .uri(URI.create("http://localhost:8080/api/tickets/" + ticketId + "/assign/" + doctorId))
+                                    .header("Content-Type", "application/json")
+                                    .PUT(HttpRequest.BodyPublishers.noBody())
+                                    .build();
+
+                            client.sendAsync(assignRequest, HttpResponse.BodyHandlers.ofString())
+                                    .thenAccept(response -> {
+                                        if (response.statusCode() == 200) {
+                                            // Succès : on recharge le tableau principal
+                                            Platform.runLater(this::loadDataFromServer);
+                                        } else {
+                                            Platform.runLater(() -> {
+                                                Alert alert = new Alert(Alert.AlertType.ERROR, "Erreur serveur d'assignation : " + response.body());
+                                                alert.show();
+                                            });
+                                        }
+                                    })
+                                    .exceptionally(ex -> {
+                                        ex.printStackTrace();
+                                        return null;
+                                    });
+                        });
+                    });
+                })
+                .exceptionally(ex -> {
+                    ex.printStackTrace();
+                    return null;
+                });
     }
 
     /**
@@ -353,6 +416,30 @@ public class DashboardController {
         emailInput.clear();
     }
 
+    @FXML
+    private void handleLogout() {
+        // 1. Vider les informations de session
+        com.mediflow.ui.util.SessionContext.getInstance().clear();
+
+        // 2. Retourner à l'écran de connexion
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/com/mediflow/ui/LoginView.fxml"));
+            javafx.scene.Parent root = loader.load();
+
+            // On récupère la fenêtre actuelle (Stage) via n'importe quel composant, ici nameInput
+            Stage stage = (Stage) nameInput.getScene().getWindow();
+
+            // On change la scène pour revenir au Login (taille 400x500 comme défini dans LoginController)
+            stage.setScene(new javafx.scene.Scene(root, 400, 500));
+            stage.setTitle("MediFlow AI - Connexion");
+            stage.show();
+
+            System.out.println("Réceptionniste déconnecté avec succès.");
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     /**
      * Ouvre la fenêtre d'historique des consultations.
      */
@@ -458,6 +545,20 @@ public class DashboardController {
             doctorsStage.setTitle("MediFlow AI - Gestion des Médecins");
             doctorsStage.setScene(new Scene(root, 800, 600));
             doctorsStage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void openWaitingRoom() {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/com/mediflow/ui/WaitingRoom.fxml"));
+            javafx.scene.Parent root = loader.load();
+            Stage waitingRoomStage = new Stage();
+            waitingRoomStage.setTitle("MediFlow AI - Écran Public Salle d'Attente");
+            waitingRoomStage.setScene(new Scene(root, 900, 650));
+            waitingRoomStage.show();
         } catch (Exception e) {
             e.printStackTrace();
         }

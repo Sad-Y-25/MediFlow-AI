@@ -56,6 +56,10 @@
 
         <Button text="Actualiser la liste" onAction="#loadDataFromServer"
                 maxWidth="Infinity" style="-fx-background-color: #3498db; -fx-text-fill: white;"/>
+
+        <Region VBox.vgrow="ALWAYS" /> <Button text="Déconnexion" onAction="#handleLogout"
+                                               maxWidth="Infinity"
+                                               style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"/>
     </VBox>
 
     <!-- Section Droite : La File d'Attente -->
@@ -91,6 +95,7 @@
                     style="-fx-background-color: #34495e; -fx-text-fill: white;"/>
             <Button text="Gérer les Médecins" onAction="#showDoctors"
                     style="-fx-background-color: #27ae60; -fx-text-fill: white;"/>
+            <Button text="Écran Salle d'Attente" onAction="#openWaitingRoom" style="-fx-background-color: #1abc9c; -fx-text-fill: white;"/>
         </HBox>
     </VBox>
 
