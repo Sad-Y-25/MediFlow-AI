@@ -9,6 +9,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
 -- Insertion d'un utilisateur test (le mot de passe devra être haché plus tard)
 INSERT INTO users (full_name, email, password, role) 
 VALUES ('Youssef Admin', 'admin@mediflow.com', 'admin123', 'ADMIN');
